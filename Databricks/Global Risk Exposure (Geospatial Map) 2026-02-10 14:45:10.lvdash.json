@@ -1,0 +1,358 @@
+{
+  "datasets": [
+    {
+      "name": "ce512f16",
+      "displayName": "Potential Risk Assessment Summary",
+      "queryLines": [
+        "SELECT \r\n",
+        "  'Worst Case Exposure (95th %)' as metric,\r\n",
+        "  round(percentile_approx(potential_exposure, 0.95), 2) as value\r\n",
+        "FROM `prism-sentinel-stream`.prism_gold.risk_simulation_results;"
+      ]
+    },
+    {
+      "name": "9ed1d43e",
+      "displayName": "Global Alert Summary by Country",
+      "queryLines": [
+        "SELECT \r\n",
+        "  country, \r\n",
+        "  sum(amount) as alerted_value,\r\n",
+        "  count(*) as alert_count\r\n",
+        "FROM `prism-sentinel-stream`.prism_silver.transactions_refined\r\n",
+        "WHERE risk_flag = 'ALERT'\r\n",
+        "GROUP BY country\r\n",
+        "ORDER BY alerted_value DESC;"
+      ]
+    },
+    {
+      "name": "71738f2c",
+      "displayName": "Top 10 Fuzzy Match Leads",
+      "queryLines": [
+        "SELECT \n",
+        "  counterparty,\n",
+        "  entity_name,\n",
+        "  similarity_score,\n",
+        "  risk_level,\n",
+        "  COUNT(*) as transaction_count,\n",
+        "  SUM(amount) as total_amount\n",
+        "FROM transactions_refined\n",
+        "WHERE similarity_score IS NOT NULL\n",
+        "GROUP BY counterparty, entity_name, similarity_score, risk_level\n",
+        "ORDER BY similarity_score DESC\n",
+        "LIMIT 10"
+      ],
+      "catalog": "prism-sentinel-stream",
+      "schema": "prism_silver"
+    }
+  ],
+  "pages": [
+    {
+      "name": "4952da9d",
+      "displayName": "High-Risk Geographic Heatmap",
+      "layout": [
+        {
+          "widget": {
+            "name": "d6376977",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9ed1d43e",
+                  "fields": [
+                    {
+                      "name": "country",
+                      "expression": "`country`"
+                    },
+                    {
+                      "name": "alert_count",
+                      "expression": "`alert_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Alert Detection by Country",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "country",
+                  "displayName": "Country",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "alert_count",
+                  "format": {
+                    "type": "number-plain",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "abbreviation": "compact"
+                  },
+                  "displayName": "Alert Count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "country",
+                  "displayName": "Country",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 0,
+            "width": 4,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "02607015",
+      "displayName": "Top 10 Fuzzy Match Leads",
+      "layout": [
+        {
+          "widget": {
+            "name": "7bcbb9a4",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "71738f2c",
+                  "fields": [
+                    {
+                      "name": "risk_level",
+                      "expression": "`risk_level`"
+                    },
+                    {
+                      "name": "entity_name",
+                      "expression": "`entity_name`"
+                    },
+                    {
+                      "name": "similarity_score",
+                      "expression": "`similarity_score`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top 10 Fuzzy Match Leads",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "entity_name",
+                  "displayName": "Entity Name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "similarity_score",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  },
+                  "displayName": "Similarity Score",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "risk_level",
+                  "displayName": "Risk Level",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 5,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "d72a98aa",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "high-risk-geographic-heatmap",
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "High-Risk Geographic Heatmap",
+                "showDescription": true,
+                "description": "Shows where the \"Evasion Hunter\" is catching the most alerts."
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": []
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "total-probabilistic-exposure-worst-case-gauge",
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Total Probabilistic Exposure (The \"Worst Case\" Gauge)"
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": []
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS"
+    },
+    {
+      "name": "ef251e84",
+      "displayName": "Geo-Evasion Clusters",
+      "layout": [
+        {
+          "widget": {
+            "name": "3b82e73d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9ed1d43e",
+                  "fields": [
+                    {
+                      "name": "alert_count",
+                      "expression": "`alert_count`"
+                    },
+                    {
+                      "name": "country",
+                      "expression": "`country`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "frame": {
+                "title": "Geographic Evasion Clusters",
+                "showTitle": true,
+                "showDescription": true
+              },
+              "widgetType": "choropleth-map",
+              "encodings": {
+                "color": {
+                  "fieldName": "alert_count",
+                  "displayName": "Alert Count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "region": {
+                  "regionType": "mapbox-v4-admin",
+                  "admin0": {
+                    "fieldName": "country",
+                    "geographicRole": "admin0-name",
+                    "type": "field"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "71404f37",
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {},
+              "frame": {
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
