@@ -1,0 +1,245 @@
+{
+  "datasets": [
+    {
+      "name": "209f47aa",
+      "displayName": "The Monte-Carlo VaR Distribution",
+      "queryLines": [
+        "SELECT \r\n",
+        "    potential_exposure,\r\n",
+        "    CASE \r\n",
+        "        WHEN potential_exposure >= (SELECT approx_percentile(potential_exposure, 0.95) FROM `prism-sentinel-stream`.prism_gold.risk_simulation_results) \r\n",
+        "        THEN 'Critical Risk (Top 5%)' \r\n",
+        "        ELSE 'Expected Volatility' \r\n",
+        "    END as risk_zone\r\n",
+        "FROM `prism-sentinel-stream`.prism_gold.risk_simulation_results"
+      ]
+    },
+    {
+      "name": "8f6ef9d2",
+      "displayName": "Fraud Probability Distribution (Individual Level)",
+      "queryLines": [
+        "-- Query to power the 'Fraud Probability Density' widget\r\n",
+        "-- Visualize as: Area Chart or Density Plot\r\n",
+        "-- X-Axis: fraud_probability_bucket | Y-Axis: transaction_count\r\n",
+        "WITH ProbabilityBuckets AS (\r\n",
+        "    SELECT \r\n",
+        "        transaction_id,\r\n",
+        "        -- Normalizing hits into 0.0-1.0 probability\r\n",
+        "        round(simulation_hits / 10000.0, 2) as fraud_probability\r\n",
+        "    FROM `prism-sentinel-stream`.prism_gold.risk_gold_monte_carlo\r\n",
+        ")\r\n",
+        "SELECT \r\n",
+        "    fraud_probability,\r\n",
+        "    count(transaction_id) as txn_count,\r\n",
+        "    CASE \r\n",
+        "        WHEN fraud_probability > 0.85 THEN '🔴 CRITICAL (SAR Candidate)'\r\n",
+        "        WHEN fraud_probability > 0.50 THEN '🟡 HIGH (Manual Review)'\r\n",
+        "        WHEN fraud_probability > 0.20 THEN '🔵 MEDIUM (Pattern Detected)'\r\n",
+        "        ELSE '🟢 LOW (Baseline)'\r\n",
+        "    END as risk_segment\r\n",
+        "FROM ProbabilityBuckets\r\n",
+        "GROUP BY 1\r\n",
+        "ORDER BY 1 DESC;  \r\n",
+        "\r\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "58fd79f5",
+      "displayName": "The Monte Carlo VaR Distribution",
+      "layout": [
+        {
+          "widget": {
+            "name": "c996ed40",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "209f47aa",
+                  "fields": [
+                    {
+                      "name": "count(*)",
+                      "expression": "COUNT(`*`)"
+                    },
+                    {
+                      "name": "risk_zone",
+                      "expression": "`risk_zone`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Risk Distribution",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "count(*)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "risk_zone",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                },
+                "extra": [
+                  {
+                    "fieldName": "count(*)"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 9,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "c598b554",
+            "multilineTextboxSpec": {
+              "lines": [
+                "\"The Monte Carlo Dashboard is the Executive Summary of Uncertainty. It takes 120 million chaotic streaming events and distils them into a single, defensible financial number. It tells the regulator not just what did happen, but exactly what could happen, and proves the bank is prepared for both.\""
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "129a5d65",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "8e724b12",
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {},
+              "frame": {
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "e503ca6c",
+      "displayName": "Fraud Probability Distribution (Individual Level)",
+      "layout": [
+        {
+          "widget": {
+            "name": "aae458a1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "8f6ef9d2",
+                  "fields": [
+                    {
+                      "name": "risk_segment",
+                      "expression": "`risk_segment`"
+                    },
+                    {
+                      "name": "sum(txn_count)",
+                      "expression": "SUM(`txn_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": false,
+                "showDescription": false
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "risk_segment",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(txn_count)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "fa4e1dc7",
+            "multilineTextboxSpec": {
+              "lines": [
+                "The Fraud Probability Distribution turns mathematical uncertainty into operational action. It provides a prioritized queue for compliance officers, ensuring that human intelligence is focused on the transactions where the Monte Carlo engine found the highest statistical evidence of evasion."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 12,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
